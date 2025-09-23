@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { SweetAlert } from '../../lib/utils/sweetAlert';
+import SweetAlert from '../../lib/utils/sweetAlert';
 import vacationService from '../../lib/services/vacations';
-import type { VacationRequest, VacationRequestFormData, VacationRequestUpdateData } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import type { VacationRequest, VacationRequestFormData, VacationRequestUpdateData, VacationRequestStatus } from '../../types';
 
 const VacationRequestsCRUD: React.FC = () => {
+  const { user } = useAuth();
   const [solicitudes, setSolicitudes] = useState<VacationRequest[]>([]);
   const [filteredSolicitudes, setFilteredSolicitudes] = useState<VacationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve');
+  const [approvalType, setApprovalType] = useState<'jefe' | 'rrhh'>('jefe');
   const [editingSolicitud, setEditingSolicitud] = useState<VacationRequest | null>(null);
   const [viewMode, setViewMode] = useState<'create' | 'edit' | 'view'>('create');
+  const [approvalComment, setApprovalComment] = useState('');
 
   // Estado del formulario
   const [formData, setFormData] = useState<VacationRequestFormData>({
@@ -22,7 +28,7 @@ const VacationRequestsCRUD: React.FC = () => {
 
   // Estado del formulario de actualización
   const [updateData, setUpdateData] = useState<VacationRequestUpdateData>({
-    estado: 'pendiente',
+    estado: 'pendiente_jefe',
     comentarios: ''
   });
 
@@ -59,13 +65,22 @@ const VacationRequestsCRUD: React.FC = () => {
       filtered = filtered.filter(solicitud =>
         solicitud.usuario_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         solicitud.usuario_apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (solicitud.motivo && solicitud.motivo.toLowerCase().includes(searchTerm.toLowerCase()))
+        (solicitud.motivo?.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
     // Filtro por estado
     if (statusFilter) {
-      filtered = filtered.filter(solicitud => solicitud.estado === statusFilter);
+      if (statusFilter === 'recent') {
+        const today = new Date();
+        filtered = filtered.filter(solicitud => {
+          const solicitudDate = new Date(solicitud.fecha_solicitud);
+          const diffDays = Math.floor((today.getTime() - solicitudDate.getTime()) / (1000 * 3600 * 24));
+          return diffDays <= 7;
+        });
+      } else {
+        filtered = filtered.filter(solicitud => solicitud.estado === statusFilter);
+      }
     }
 
     setFilteredSolicitudes(filtered);
@@ -203,12 +218,212 @@ const VacationRequestsCRUD: React.FC = () => {
     });
   };
 
+  // ============================================
+  // FUNCIONES DE APROBACIÓN POR ROLES
+  // ============================================
+
+  // Abrir modal de aprobación
+  const handleOpenApprovalModal = (solicitud: VacationRequest, action: 'approve' | 'reject', type: 'jefe' | 'rrhh') => {
+    setEditingSolicitud(solicitud);
+    setApprovalAction(action);
+    setApprovalType(type);
+    setApprovalComment('');
+    setShowApprovalModal(true);
+  };
+
+  // Procesar aprobación/rechazo
+  const handleApproval = async () => {
+    if (!editingSolicitud) return;
+
+    if (approvalAction === 'reject' && !approvalComment.trim()) {
+      await SweetAlert.error('Error', 'El motivo de rechazo es requerido');
+      return;
+    }
+
+    try {
+      let response;
+      
+      if (approvalType === 'jefe') {
+        if (approvalAction === 'approve') {
+          response = await vacationService.approveByJefe(editingSolicitud.id, approvalComment);
+        } else {
+          response = await vacationService.rejectByJefe(editingSolicitud.id, approvalComment);
+        }
+      } else {
+        if (approvalAction === 'approve') {
+          response = await vacationService.approveByRRHH(editingSolicitud.id, approvalComment);
+        } else {
+          response = await vacationService.rejectByRRHH(editingSolicitud.id, approvalComment);
+        }
+      }
+
+      if (response.success) {
+        await SweetAlert.success(
+          'Éxito', 
+          `Solicitud ${approvalAction === 'approve' ? 'aprobada' : 'rechazada'} correctamente`
+        );
+        loadSolicitudes();
+        setShowApprovalModal(false);
+        setEditingSolicitud(null);
+      }
+    } catch (error: any) {
+      console.error('Error in approval:', error);
+      await SweetAlert.error('Error', error.message || 'Error al procesar la solicitud');
+    }
+  };
+
+  // Determinar si puede aprobar/rechazar según rol y estado
+  const canApproveAsJefe = (solicitud: VacationRequest): boolean => {
+    return user?.rol === 'jefe_superior' && solicitud.estado === 'pendiente_jefe';
+  };
+
+  const canApproveAsRRHH = (solicitud: VacationRequest): boolean => {
+    return user?.rol === 'rrhh' && solicitud.estado === 'pendiente_rrhh';
+  };
+
+  // Componente de progreso del flujo de aprobación
+  const getApprovalFlow = (estado: VacationRequestStatus) => {
+    const steps = [
+      { key: 'pendiente_jefe', label: 'Jefe Superior', icon: '👤' },
+      { key: 'pendiente_rrhh', label: 'RRHH', icon: '🏢' },
+      { key: 'aprobada', label: 'Aprobada', icon: '✅' }
+    ];
+
+    const getCurrentStep = () => {
+      switch (estado) {
+        case 'pendiente_jefe': return 0;
+        case 'pendiente_rrhh': return 1;
+        case 'aprobada': return 2;
+        case 'rechazada': return -1;
+        case 'cancelada': return -1;
+        default: return 0;
+      }
+    };
+
+    const currentStep = getCurrentStep();
+
+    if (estado === 'rechazada' || estado === 'cancelada') {
+      return (
+        <div className="flex items-center">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            {estado === 'rechazada' ? '❌ Rechazada' : '⚫ Cancelada'}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center space-x-1">
+        {steps.map((step, index) => {
+          const isActive = index === currentStep;
+          const isCompleted = index < currentStep;
+          const isPending = index > currentStep;
+          
+          return (
+            <div key={step.key} className="flex items-center">
+              <div className={`
+                flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium
+                ${isActive ? 'bg-blue-500 text-white animate-pulse' : ''}
+                ${isCompleted ? 'bg-green-500 text-white' : ''}
+                ${isPending ? 'bg-gray-200 text-gray-500' : ''}
+              `}>
+                <span className="text-xs">{step.icon}</span>
+              </div>
+              {index < steps.length - 1 && (
+                <div className={`w-8 h-0.5 mx-1 ${
+                  isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                }`} />
+              )}
+            </div>
+          );
+        })}
+        <span className="ml-2 text-xs text-gray-600">
+          {steps[currentStep]?.label}
+        </span>
+      </div>
+    );
+  };
+
+  // Función para obtener el color del badge según el estado
+  const getStatusBadge = (estado: string) => {
+    const badges = {
+      'pendiente_jefe': 'bg-yellow-100 text-yellow-800',
+      'pendiente_rrhh': 'bg-blue-100 text-blue-800',
+      'aprobada': 'bg-green-100 text-green-800',
+      'rechazada': 'bg-red-100 text-red-800',
+      'cancelada': 'bg-gray-100 text-gray-800'
+    };
+    return badges[estado as keyof typeof badges] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Función para obtener el texto del estado
+  const getStatusText = (estado: string) => {
+    const texts = {
+      'pendiente_jefe': 'Pendiente Jefe',
+      'pendiente_rrhh': 'Pendiente RRHH',
+      'aprobada': 'Aprobada',
+      'rechazada': 'Rechazada',
+      'cancelada': 'Cancelada'
+    };
+    return texts[estado as keyof typeof texts] || estado;
+  };
+
   const statusOptions = [
     { value: '', label: 'Todos los estados' },
-    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'pendiente_jefe', label: 'Pendiente Jefe' },
+    { value: 'pendiente_rrhh', label: 'Pendiente RRHH' },
     { value: 'aprobada', label: 'Aprobada' },
-    { value: 'rechazada', label: 'Rechazada' }
+    { value: 'rechazada', label: 'Rechazada' },
+    { value: 'cancelada', label: 'Cancelada' }
   ];
+
+  // Filtros inteligentes basados en el rol del usuario
+  const getQuickFilters = () => {
+    const baseFilters = [
+      { value: '', label: 'Todas las solicitudes', count: solicitudes.length }
+    ];
+
+    if (user?.rol === 'jefe_superior') {
+      const pendingJefe = solicitudes.filter(s => s.estado === 'pendiente_jefe').length;
+      if (pendingJefe > 0) {
+        baseFilters.push({ 
+          value: 'pendiente_jefe', 
+          label: `⏳ Pendientes de mi aprobación`, 
+          count: pendingJefe 
+        });
+      }
+    }
+
+    if (user?.rol === 'rrhh') {
+      const pendingRRHH = solicitudes.filter(s => s.estado === 'pendiente_rrhh').length;
+      if (pendingRRHH > 0) {
+        baseFilters.push({ 
+          value: 'pendiente_rrhh', 
+          label: `🏢 Pendientes RRHH`, 
+          count: pendingRRHH 
+        });
+      }
+    }
+
+    const recent = solicitudes.filter(s => {
+      const today = new Date();
+      const solicitudDate = new Date(s.fecha_solicitud);
+      const diffDays = Math.floor((today.getTime() - solicitudDate.getTime()) / (1000 * 3600 * 24));
+      return diffDays <= 7;
+    }).length;
+
+    if (recent > 0) {
+      baseFilters.push({ 
+        value: 'recent', 
+        label: `📅 Últimos 7 días`, 
+        count: recent 
+      });
+    }
+
+    return baseFilters;
+  };
+
+  const quickFilters = getQuickFilters();
 
   if (loading) {
     return (
@@ -236,6 +451,35 @@ const VacationRequestsCRUD: React.FC = () => {
           Nueva Solicitud
         </button>
       </div>
+
+      {/* Filtros Rápidos */}
+      {quickFilters.length > 1 && (
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Filtros Rápidos</h3>
+          <div className="flex flex-wrap gap-2">
+            {quickFilters.map(filter => (
+              <button
+                key={filter.value}
+                onClick={() => setStatusFilter(filter.value)}
+                className={`
+                  inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-colors
+                  ${statusFilter === filter.value 
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                  }
+                `}
+              >
+                {filter.label}
+                <span className={`ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium
+                  ${statusFilter === filter.value ? 'bg-blue-200 text-blue-800' : 'bg-gray-200 text-gray-600'}
+                `}>
+                  {filter.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -281,7 +525,7 @@ const VacationRequestsCRUD: React.FC = () => {
                   Días
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
+                  Flujo de Aprobación
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Fecha Solicitud
@@ -294,7 +538,6 @@ const VacationRequestsCRUD: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredSolicitudes.length > 0 ? (
                 filteredSolicitudes.map((solicitud) => {
-                  const statusFormat = vacationService.formatStatus(solicitud.estado);
                   return (
                     <tr key={solicitud.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -321,9 +564,7 @@ const VacationRequestsCRUD: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusFormat.color}`}>
-                          {statusFormat.text}
-                        </span>
+                        {getApprovalFlow(solicitud.estado)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(solicitud.fecha_solicitud)}
@@ -342,15 +583,65 @@ const VacationRequestsCRUD: React.FC = () => {
                             </svg>
                           </button>
 
-                          {/* Botón Gestionar (solo para pendientes) */}
-                          {solicitud.estado === 'pendiente' && (
+                          {/* Botones de Aprobación por Rol */}
+                          
+                          {/* Botones para Jefe Superior */}
+                          {canApproveAsJefe(solicitud) && (
+                            <>
+                              <button
+                                onClick={() => handleOpenApprovalModal(solicitud, 'approve', 'jefe')}
+                                className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded transition-colors"
+                                title="Aprobar como Jefe"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => handleOpenApprovalModal(solicitud, 'reject', 'jefe')}
+                                className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors"
+                                title="Rechazar como Jefe"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
+
+                          {/* Botones para RRHH */}
+                          {canApproveAsRRHH(solicitud) && (
+                            <>
+                              <button
+                                onClick={() => handleOpenApprovalModal(solicitud, 'approve', 'rrhh')}
+                                className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded transition-colors"
+                                title="Aprobar como RRHH"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => handleOpenApprovalModal(solicitud, 'reject', 'rrhh')}
+                                className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors"
+                                title="Rechazar como RRHH"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
+
+                          {/* Botón Editar (solo para admins en solicitudes no finalizadas) */}
+                          {user?.rol === 'rrhh' && ['pendiente_jefe', 'pendiente_rrhh'].includes(solicitud.estado) && (
                             <button
                               onClick={() => handleOpenEditModal(solicitud)}
-                              className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded transition-colors"
-                              title="Aprobar/Rechazar"
+                              className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+                              title="Editar solicitud"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
                           )}
@@ -387,10 +678,11 @@ const VacationRequestsCRUD: React.FC = () => {
               {viewMode === 'create' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="fecha_inicio" className="block text-sm font-medium text-gray-700 mb-1">
                       Fecha de Inicio *
                     </label>
                     <input
+                      id="fecha_inicio"
                       type="date"
                       name="fecha_inicio"
                       value={formData.fecha_inicio}
@@ -402,10 +694,11 @@ const VacationRequestsCRUD: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="fecha_fin" className="block text-sm font-medium text-gray-700 mb-1">
                       Fecha de Fin *
                     </label>
                     <input
+                      id="fecha_fin"
                       type="date"
                       name="fecha_fin"
                       value={formData.fecha_fin}
@@ -425,10 +718,11 @@ const VacationRequestsCRUD: React.FC = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="motivo" className="block text-sm font-medium text-gray-700 mb-1">
                       Motivo
                     </label>
                     <textarea
+                      id="motivo"
                       name="motivo"
                       value={formData.motivo}
                       onChange={handleInputChange}
@@ -461,10 +755,11 @@ const VacationRequestsCRUD: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
                       Decisión *
                     </label>
                     <select
+                      id="estado"
                       name="estado"
                       value={updateData.estado}
                       onChange={handleInputChange}
@@ -478,10 +773,11 @@ const VacationRequestsCRUD: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="comentarios" className="block text-sm font-medium text-gray-700 mb-1">
                       Comentarios
                     </label>
                     <textarea
+                      id="comentarios"
                       name="comentarios"
                       value={updateData.comentarios}
                       onChange={handleInputChange}
@@ -572,6 +868,121 @@ const VacationRequestsCRUD: React.FC = () => {
                 )}
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Aprobación */}
+      {showApprovalModal && editingSolicitud && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {approvalAction === 'approve' ? 'Aprobar' : 'Rechazar'} Solicitud
+              </h3>
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {/* Información de la solicitud */}
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Detalles de la Solicitud</h4>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Empleado:</span>
+                    <span className="ml-2 text-gray-900">{editingSolicitud.usuario_nombre} {editingSolicitud.usuario_apellido}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Fechas:</span>
+                    <span className="ml-2 text-gray-900">
+                      {formatDate(editingSolicitud.fecha_inicio)} - {formatDate(editingSolicitud.fecha_fin)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Días:</span>
+                    <span className="ml-2 text-gray-900">{editingSolicitud.dias_solicitados} días</span>
+                  </div>
+                  {editingSolicitud.motivo && (
+                    <div>
+                      <span className="font-medium text-gray-700">Motivo:</span>
+                      <span className="ml-2 text-gray-900">{editingSolicitud.motivo}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Formulario de comentarios */}
+              <div>
+                <label htmlFor="approval-comment" className="block text-sm font-medium text-gray-700 mb-2">
+                  {approvalAction === 'approve' ? 'Comentarios (opcional)' : 'Motivo del rechazo *'}
+                </label>
+                <textarea
+                  id="approval-comment"
+                  value={approvalComment}
+                  onChange={(e) => setApprovalComment(e.target.value)}
+                  placeholder={
+                    approvalAction === 'approve' 
+                      ? 'Ingrese comentarios adicionales...' 
+                      : 'Explique el motivo del rechazo...'
+                  }
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  required={approvalAction === 'reject'}
+                />
+              </div>
+
+              {/* Información del flujo */}
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-800">
+                      {approvalType === 'jefe' && approvalAction === 'approve' && 
+                        'Al aprobar, la solicitud pasará a revisión de RRHH.'
+                      }
+                      {approvalType === 'rrhh' && approvalAction === 'approve' && 
+                        'Al aprobar, se descontarán los días del empleado y la solicitud se marcará como aprobada.'
+                      }
+                      {approvalAction === 'reject' && 
+                        'Al rechazar, la solicitud se marcará como rechazada y se notificará al empleado.'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleApproval}
+                disabled={approvalAction === 'reject' && !approvalComment.trim()}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                  approvalAction === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700 disabled:bg-green-400'
+                    : 'bg-red-600 hover:bg-red-700 disabled:bg-red-400'
+                } disabled:cursor-not-allowed`}
+              >
+                {approvalAction === 'approve' ? 'Aprobar' : 'Rechazar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

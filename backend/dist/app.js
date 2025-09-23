@@ -14,7 +14,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const users_1 = __importDefault(require("./routes/users"));
 const vacaciones_1 = __importDefault(require("./routes/vacaciones"));
 const reportes_1 = __importDefault(require("./routes/reportes"));
-const configuracion_1 = __importDefault(require("./routes/configuracion"));
+const config_1 = __importDefault(require("./routes/config"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -46,7 +46,7 @@ app.use('/api/auth', authLimiter, auth_1.default);
 app.use('/api/users', users_1.default);
 app.use('/api/vacaciones', vacaciones_1.default);
 app.use('/api/reportes', reportes_1.default);
-app.use('/api/configuracion', configuracion_1.default);
+app.use('/api/config', config_1.default);
 app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: 'OK',
@@ -59,7 +59,7 @@ app.get('/api/health', (req, res) => {
             users: '/api/users',
             vacaciones: '/api/vacaciones',
             reportes: '/api/reportes',
-            configuracion: '/api/configuracion'
+            config: '/api/config'
         }
     });
 });
@@ -102,7 +102,7 @@ const startServer = async () => {
             console.log(`👥 Users API: http://localhost:${PORT}/api/users`);
             console.log(`🏖️ Vacaciones API: http://localhost:${PORT}/api/vacaciones`);
             console.log(`📈 Reportes API: http://localhost:${PORT}/api/reportes`);
-            console.log(`⚙️ Configuración API: http://localhost:${PORT}/api/configuracion`);
+            console.log(`⚙️ Config API: http://localhost:${PORT}/api/config`);
             console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
             console.log('✅ Servidor escuchando correctamente en el puerto', PORT);
         });

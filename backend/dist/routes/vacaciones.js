@@ -17,5 +17,9 @@ router.get('/stats', (0, authMiddleware_1.authorizeRoles)('rrhh', 'jefe_superior
 router.get('/:id', vacacionesController_1.getSolicitudById);
 router.post('/', (0, authMiddleware_1.rateLimitByUser)(5, 60 * 60 * 1000), vacacionesController_1.createSolicitud);
 router.put('/:id', (0, authMiddleware_1.authorizeRoles)('rrhh', 'jefe_superior'), vacacionesController_1.updateSolicitud);
+router.post('/:id/approve-jefe', (0, authMiddleware_1.authorizeRoles)('jefe_superior'), vacacionesController_1.approveByJefe);
+router.post('/:id/reject-jefe', (0, authMiddleware_1.authorizeRoles)('jefe_superior'), vacacionesController_1.rejectByJefe);
+router.post('/:id/approve-rrhh', (0, authMiddleware_1.authorizeRoles)('rrhh'), vacacionesController_1.approveByRRHH);
+router.post('/:id/reject-rrhh', (0, authMiddleware_1.authorizeRoles)('rrhh'), vacacionesController_1.rejectByRRHH);
 exports.default = router;
 //# sourceMappingURL=vacaciones.js.map

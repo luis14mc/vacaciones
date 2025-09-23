@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import UserCRUD from './admin/UserCRUD';
 import VacationManagement from './admin/VacationManagement';
 import VacationRequestsCRUD from './admin/VacationRequestsCRUD';
 import ReportsSystem from './admin/ReportsSystem';
-import ConfigurationPanel from './admin/ConfigurationPanel';
+import ConfigurationManager from './ConfigurationManager';
 
 interface User {
   id: number;
@@ -21,6 +22,27 @@ const SimpleDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeAdminView, setActiveAdminView] = useState<'overview' | 'users' | 'vacation-requests' | 'vacation-days' | 'reports' | 'config'>('overview');
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Estados para empleados
+  const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+
+  // Handlers para los botones de empleado
+  const handleNewRequest = () => {
+    console.log('Nueva solicitud clicked');
+    setShowNewRequestModal(true);
+  };
+
+  const handleHistory = () => {
+    console.log('Ver historial clicked');
+    setShowHistoryModal(true);
+  };
+
+  const handleCalendar = () => {
+    console.log('Calendario clicked');
+    setShowCalendarModal(true);
+  };
 
   // Debug: Log when activeAdminView changes
   useEffect(() => {
@@ -189,9 +211,41 @@ const SimpleDashboard: React.FC = () => {
     };
   }, [showUserMenu]);
 
-  const handleLogout = () => {
-    // Confirmar antes de cerrar sesión
-    if (confirm('¿Está seguro que desea cerrar sesión?')) {
+  const handleLogout = async () => {
+    // Confirmar antes de cerrar sesión con SweetAlert
+    const result = await Swal.fire({
+      title: '¿Cerrar sesión?',
+      html: `
+        <div class="text-center">
+          <div class="mb-4">
+            <svg class="w-16 h-16 text-yellow-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+            </svg>
+          </div>
+          <p class="text-gray-600">¿Está seguro que desea cerrar su sesión?</p>
+          <p class="text-sm text-gray-500 mt-2">Deberá iniciar sesión nuevamente para acceder al sistema.</p>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cerrar sesión',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      reverseButtons: true
+    });
+
+    if (result.isConfirmed) {
+      // Mostrar loading mientras se cierra sesión
+      Swal.fire({
+        title: 'Cerrando sesión...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
       console.log('=== LOGOUT START ===');
       console.log('Clearing localStorage...');
       
@@ -213,6 +267,16 @@ const SimpleDashboard: React.FC = () => {
       setUser(null);
       
       console.log('=== LOGOUT END - Redirecting to login ===');
+      
+      // Mostrar mensaje de despedida antes de redireccionar
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Sesión cerrada!',
+        text: 'Ha cerrado sesión exitosamente. Redirigiendo...',
+        timer: 1500,
+        timerProgressBar: true,
+        showConfirmButton: false
+      });
       
       // Redireccionar al login
       window.location.replace('/login');
@@ -318,7 +382,10 @@ const SimpleDashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Acciones Rápidas</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <button className="group bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-300 p-6 rounded-xl text-center transition-all transform hover:scale-105">
+              <button 
+                onClick={handleNewRequest}
+                className="group bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-300 p-6 rounded-xl text-center transition-all transform hover:scale-105"
+              >
                 <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-700 transition-colors">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -328,7 +395,10 @@ const SimpleDashboard: React.FC = () => {
                 <p className="text-sm text-gray-600">Solicitar días de vacaciones</p>
               </button>
 
-              <button className="group bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-300 p-6 rounded-xl text-center transition-all transform hover:scale-105">
+              <button 
+                onClick={handleHistory}
+                className="group bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-300 p-6 rounded-xl text-center transition-all transform hover:scale-105"
+              >
                 <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-green-700 transition-colors">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -338,7 +408,10 @@ const SimpleDashboard: React.FC = () => {
                 <p className="text-sm text-gray-600">Consultar solicitudes anteriores</p>
               </button>
 
-              <button className="group bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 hover:border-purple-300 p-6 rounded-xl text-center transition-all transform hover:scale-105">
+              <button 
+                onClick={handleCalendar}
+                className="group bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 hover:border-purple-300 p-6 rounded-xl text-center transition-all transform hover:scale-105"
+              >
                 <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-purple-700 transition-colors">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -378,6 +451,97 @@ const SimpleDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Modales para Empleado */}
+        {/* Modal Nueva Solicitud */}
+        {showNewRequestModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Nueva Solicitud de Vacaciones</h3>
+                <button
+                  onClick={() => setShowNewRequestModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-600 mb-4">Funcionalidad en desarrollo. Por ahora, ve a la sección administrativa para crear solicitudes.</p>
+                <button
+                  onClick={() => {
+                    setShowNewRequestModal(false);
+                    setActiveAdminView('vacation-requests');
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  Ir a Gestión de Solicitudes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Historial */}
+        {showHistoryModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Historial de Solicitudes</h3>
+                <button
+                  onClick={() => setShowHistoryModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-600 mb-4">Consulta tu historial en la sección administrativa.</p>
+                <button
+                  onClick={() => {
+                    setShowHistoryModal(false);
+                    setActiveAdminView('vacation-requests');
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  Ver Historial
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Calendario */}
+        {showCalendarModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Calendario de Vacaciones</h3>
+                <button
+                  onClick={() => setShowCalendarModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-600 mb-4">Funcionalidad en desarrollo.</p>
+                <button
+                  onClick={() => setShowCalendarModal(false)}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -449,7 +613,7 @@ const SimpleDashboard: React.FC = () => {
         <div className="min-h-screen bg-gray-50">
           {renderHeader('Panel de Configuración', 'Configuraciones del sistema', true)}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <ConfigurationPanel />
+            <ConfigurationManager />
           </div>
         </div>
       );
@@ -471,8 +635,8 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-sm opacity-75">+5 este mes</p>
                 </div>
                 <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                   </svg>
                 </div>
               </div>
@@ -486,7 +650,7 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-sm opacity-75">Requieren atención</p>
                 </div>
                 <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                   </svg>
                 </div>
@@ -501,7 +665,7 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-sm opacity-75">85% tasa aprobación</p>
                 </div>
                 <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
                   </svg>
                 </div>
@@ -516,7 +680,7 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-sm opacity-75">Activos</p>
                 </div>
                 <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
                   </svg>
                 </div>

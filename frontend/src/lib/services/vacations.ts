@@ -57,6 +57,54 @@ export class VacationService {
     }
   }
 
+  // ============================================
+  // MÉTODOS DE APROBACIÓN POR ROLES
+  // ============================================
+
+  // Aprobar solicitud por jefe
+  async approveByJefe(id: number, comentarios?: string): Promise<ApiResponse<VacationRequest>> {
+    try {
+      return await apiService.post<VacationRequest>(`/vacaciones/${id}/approve-jefe`, {
+        comentarios_jefe: comentarios
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Rechazar solicitud por jefe
+  async rejectByJefe(id: number, motivoRechazo: string): Promise<ApiResponse<VacationRequest>> {
+    try {
+      return await apiService.post<VacationRequest>(`/vacaciones/${id}/reject-jefe`, {
+        motivo_rechazo: motivoRechazo
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Aprobar solicitud por RRHH
+  async approveByRRHH(id: number, comentarios?: string): Promise<ApiResponse<VacationRequest>> {
+    try {
+      return await apiService.post<VacationRequest>(`/vacaciones/${id}/approve-rrhh`, {
+        comentarios_rrhh: comentarios
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Rechazar solicitud por RRHH
+  async rejectByRRHH(id: number, motivoRechazo: string): Promise<ApiResponse<VacationRequest>> {
+    try {
+      return await apiService.post<VacationRequest>(`/vacaciones/${id}/reject-rrhh`, {
+        motivo_rechazo: motivoRechazo
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Validar fechas de solicitud
   validateDates(fechaInicio: string, fechaFin: string): { valid: boolean; message?: string } {
     const inicio = new Date(fechaInicio);

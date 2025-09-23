@@ -19,7 +19,7 @@ export interface User {
 }
 
 // Tipos de solicitudes de vacaciones (sincronizado con backend)
-export type VacationRequestStatus = 'pendiente' | 'aprobada' | 'rechazada';
+export type VacationRequestStatus = 'pendiente_jefe' | 'pendiente_rrhh' | 'aprobada' | 'rechazada' | 'cancelada';
 
 export interface VacationRequest {
   id: number;

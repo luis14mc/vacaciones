@@ -48,15 +48,24 @@ export interface SolicitudVacaciones {
     fecha_inicio: Date;
     fecha_fin: Date;
     dias_solicitados: number;
+    motivo: string;
     comentarios?: string;
     estado: 'pendiente_jefe' | 'pendiente_rrhh' | 'aprobada' | 'rechazada' | 'cancelada';
-    motivo_rechazo?: string;
-    aprobado_por_jefe_id?: number;
+    aprobador_jefe_id?: number;
     fecha_aprobacion_jefe?: Date;
-    aprobado_por_rrhh_id?: number;
+    comentarios_jefe?: string;
+    aprobador_rrhh_id?: number;
     fecha_aprobacion_rrhh?: Date;
+    comentarios_rrhh?: string;
+    fecha_rechazo?: Date;
+    motivo_rechazo?: string;
     fecha_creacion: Date;
     fecha_actualizacion: Date;
+    usuario_nombre?: string;
+    usuario_apellido?: string;
+    usuario_numero_empleado?: string;
+    jefe_nombre?: string;
+    rrhh_nombre?: string;
 }
 export interface CreateSolicitudDto {
     fecha_inicio: Date;

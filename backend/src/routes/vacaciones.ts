@@ -4,7 +4,11 @@ import {
   getSolicitudById,
   createSolicitud,
   updateSolicitud,
-  getSolicitudesStats
+  getSolicitudesStats,
+  approveByJefe,
+  rejectByJefe,
+  approveByRRHH,
+  rejectByRRHH
 } from '../controllers/vacacionesController';
 import { authenticateToken, authorizeRoles, rateLimitByUser } from '../middleware/authMiddleware';
 
@@ -37,5 +41,21 @@ router.post('/', rateLimitByUser(5, 60 * 60 * 1000), createSolicitud);
 
 // PUT /api/solicitudes/:id - Actualizar solicitud
 router.put('/:id', authorizeRoles('rrhh', 'jefe_superior'), updateSolicitud);
+
+// ============================================
+// RUTAS DE APROBACIÓN POR ROLES
+// ============================================
+
+// POST /api/solicitudes/:id/approve-jefe - Aprobar por jefe
+router.post('/:id/approve-jefe', authorizeRoles('jefe_superior'), approveByJefe);
+
+// POST /api/solicitudes/:id/reject-jefe - Rechazar por jefe
+router.post('/:id/reject-jefe', authorizeRoles('jefe_superior'), rejectByJefe);
+
+// POST /api/solicitudes/:id/approve-rrhh - Aprobar por RRHH
+router.post('/:id/approve-rrhh', authorizeRoles('rrhh'), approveByRRHH);
+
+// POST /api/solicitudes/:id/reject-rrhh - Rechazar por RRHH
+router.post('/:id/reject-rrhh', authorizeRoles('rrhh'), rejectByRRHH);
 
 export default router;

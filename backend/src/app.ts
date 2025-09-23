@@ -10,7 +10,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import vacacionesRoutes from './routes/vacaciones';
 import reportesRoutes from './routes/reportes';
-import configuracionRoutes from './routes/configuracion';
+import configRoutes from './routes/config';
 
 dotenv.config();
 
@@ -54,7 +54,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/vacaciones', vacacionesRoutes);
 app.use('/api/reportes', reportesRoutes);
-app.use('/api/configuracion', configuracionRoutes);
+app.use('/api/config', configRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -68,7 +68,7 @@ app.get('/api/health', (req, res) => {
       users: '/api/users',
       vacaciones: '/api/vacaciones',
       reportes: '/api/reportes',
-      configuracion: '/api/configuracion'
+      config: '/api/config'
     }
   });
 });
@@ -120,7 +120,7 @@ const startServer = async (): Promise<void> => {
       console.log(`👥 Users API: http://localhost:${PORT}/api/users`);
       console.log(`🏖️ Vacaciones API: http://localhost:${PORT}/api/vacaciones`);
       console.log(`📈 Reportes API: http://localhost:${PORT}/api/reportes`);
-      console.log(`⚙️ Configuración API: http://localhost:${PORT}/api/configuracion`);
+      console.log(`⚙️ Config API: http://localhost:${PORT}/api/config`);
       console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
       console.log('✅ Servidor escuchando correctamente en el puerto', PORT);
     });
