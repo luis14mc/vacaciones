@@ -5,6 +5,8 @@ import VacationManagement from './admin/VacationManagement';
 import VacationRequestsCRUD from './admin/VacationRequestsCRUD';
 import ReportsSystem from './admin/ReportsSystem';
 import ConfigurationManager from './ConfigurationManager';
+import VacationRequestForm from './employee/VacationRequestForm';
+import VacationHistory from './employee/VacationHistory';
 
 interface User {
   id: number;
@@ -30,18 +32,21 @@ const SimpleDashboard: React.FC = () => {
 
   // Handlers para los botones de empleado
   const handleNewRequest = () => {
-    console.log('Nueva solicitud clicked');
     setShowNewRequestModal(true);
   };
 
   const handleHistory = () => {
-    console.log('Ver historial clicked');
     setShowHistoryModal(true);
   };
 
   const handleCalendar = () => {
-    console.log('Calendario clicked');
     setShowCalendarModal(true);
+  };
+
+  // Handler para cuando se crea una solicitud exitosamente
+  const handleRequestSuccess = () => {
+    // Aquí podrías recargar datos si es necesario
+    console.log('Solicitud creada exitosamente');
   };
 
   // Debug: Log when activeAdminView changes
@@ -452,70 +457,20 @@ const SimpleDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Modales para Empleado */}
-        {/* Modal Nueva Solicitud */}
-        {showNewRequestModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Nueva Solicitud de Vacaciones</h3>
-                <button
-                  onClick={() => setShowNewRequestModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-6">
-                <p className="text-gray-600 mb-4">Funcionalidad en desarrollo. Por ahora, ve a la sección administrativa para crear solicitudes.</p>
-                <button
-                  onClick={() => {
-                    setShowNewRequestModal(false);
-                    setActiveAdminView('vacation-requests');
-                  }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-                >
-                  Ir a Gestión de Solicitudes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Componentes para Empleado */}
+        <VacationRequestForm
+          isOpen={showNewRequestModal}
+          onClose={() => setShowNewRequestModal(false)}
+          onSuccess={handleRequestSuccess}
+          userDaysAvailable={user?.dias_disponibles || 0}
+        />
 
-        {/* Modal Historial */}
-        {showHistoryModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Historial de Solicitudes</h3>
-                <button
-                  onClick={() => setShowHistoryModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-6">
-                <p className="text-gray-600 mb-4">Consulta tu historial en la sección administrativa.</p>
-                <button
-                  onClick={() => {
-                    setShowHistoryModal(false);
-                    setActiveAdminView('vacation-requests');
-                  }}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
-                >
-                  Ver Historial
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <VacationHistory
+          isOpen={showHistoryModal}
+          onClose={() => setShowHistoryModal(false)}
+        />
 
-        {/* Modal Calendario */}
+        {/* Modal Calendario (temporal) */}
         {showCalendarModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
@@ -634,8 +589,8 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-3xl font-bold">142</p>
                   <p className="text-sm opacity-75">+5 este mes</p>
                 </div>
-                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <div className="w-16 h-16 bg--gray bg-opacity-20 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-gray" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                   </svg>
                 </div>
@@ -649,7 +604,7 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-3xl font-bold">24</p>
                   <p className="text-sm opacity-75">Requieren atención</p>
                 </div>
-                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-gray bg-opacity-20 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                   </svg>
@@ -664,7 +619,7 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-3xl font-bold">12</p>
                   <p className="text-sm opacity-75">85% tasa aprobación</p>
                 </div>
-                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-gray bg-opacity-20 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
                   </svg>
@@ -679,7 +634,7 @@ const SimpleDashboard: React.FC = () => {
                   <p className="text-3xl font-bold">8</p>
                   <p className="text-sm opacity-75">Activos</p>
                 </div>
-                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                <div className="w-12 h-12 bg-gray bg-opacity-20 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
                   </svg>

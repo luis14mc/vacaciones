@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = async () => {
     if (typeof window === 'undefined') return;
     
-    const token = localStorage.getItem('cni_token');
+    const token = localStorage.getItem('auth_token');
     if (!token) {
       dispatch({ type: 'SET_AUTHENTICATED', payload: false });
       return;
@@ -101,9 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error checking auth:', error);
       dispatch({ type: 'LOGOUT' });
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('cni_token');
-        localStorage.removeItem('cni_user');
-        localStorage.removeItem('cni_refresh_token');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('refresh_token');
       }
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -136,10 +136,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Guardar en localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('cni_token', authData.token);
-        localStorage.setItem('cni_user', JSON.stringify(authData.user));
+        localStorage.setItem('auth_token', authData.token);
+        localStorage.setItem('user_data', JSON.stringify(authData.user));
         if (authData.refreshToken) {
-          localStorage.setItem('cni_refresh_token', authData.refreshToken);
+          localStorage.setItem('refresh_token', authData.refreshToken);
         }
       }
       
@@ -159,8 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'LOGOUT' });
       
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('cni_token');
-        localStorage.removeItem('cni_user');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
       }
     } catch (error) {
       console.error('Logout error:', error);
@@ -170,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUser = (user: AuthUser) => {
     dispatch({ type: 'SET_USER', payload: user });
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cni_user', JSON.stringify(user));
+      localStorage.setItem('user_data', JSON.stringify(user));
     }
   };
 
