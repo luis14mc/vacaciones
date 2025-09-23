@@ -1,0 +1,536 @@
+import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
+import pool, { queryWithRetry } from '../config/database';
+
+export type UserRole = 'empleado' | 'jefe_superior' | 'rrhh' | 'admin';
+        u.telefono,
+        u.fecha_contratacion,
+        u.rol,
+        u.jefe_superior_id,
+        u.dias_disponibles,
+        u.dias_tomados,
+        u.activo,
+        u.fecha_creacion,
+        u.fecha_actualizacion
+      FROM usuarios u
+      WHERE u.id = $1
+    `, [id]);_superior' | 'rrhh';
+
+export interface User {
+  id: number;
+  email: string;
+  nombre: string;
+  apellido: string;
+  rol: UserRole;
+  numeroEmpleado?: string;
+  telefono?: string;
+  fechaContratacion?: string;
+  departamento?: string;
+  supervisor_id?: number;
+  supervisor_nombre?: string;
+  dias_disponibles: number;
+  diasTomados?: number;
+  activo: boolean;
+  fecha_creacion: string;
+  fechaActualizacion?: string;
+  ultimo_acceso?: string;
+}
+
+export interface CreateUserRequest {
+  email: string;
+  password: string;
+  nombre: string;
+  apellido: string;
+  rol: UserRole;
+  numero_empleado?: string;
+  fecha_contratacion?: string;
+  departamento?: string;
+  supervisor_id?: number;
+  dias_disponibles: number;
+}
+
+export interface UpdateUserRequest {
+  email?: string;
+  nombre?: string;
+  apellido?: string;
+  rol?: UserRole;
+  numero_empleado?: string;
+  departamento?: string;
+  supervisor_id?: number;
+  dias_disponibles?: number;
+  activo?: boolean;
+}
+
+export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('=== getAllUsers START ===');
+    console.log('Query params:', req.query);
+    
+    // Consulta base
+    let query = `
+      SELECT 
+        u.id,
+        u.email,
+        u.nombre,
+        u.apellido,
+        u.rol,
+        u.numero_empleado,
+        u.telefono,
+        u.fecha_contratacion,
+        u.dias_disponibles,
+        u.dias_tomados,
+        u.activo,
+        u.fecha_creacion,
+        u.fecha_actualizacion
+      FROM usuarios u
+      WHERE 1=1
+    `;
+    
+    const values: any[] = [];
+    let paramIndex = 1;
+    
+    // Filtro por roles si existe
+    if (req.query.role) {
+      console.log('Adding role filter:', req.query.role);
+      const roleString = String(req.query.role);
+      if (roleString.includes(',')) {
+        // Multiple roles
+        const roles = roleString.split(',').map(r => r.trim());
+        const placeholders = roles.map(() => `$${paramIndex++}`).join(',');
+        query += ` AND u.rol IN (${placeholders})`;
+        values.push(...roles);
+      } else {
+        // Single role
+        query += ` AND u.rol = $${paramIndex++}`;
+        values.push(roleString.trim());
+      }
+    }
+    
+    // Filtro por estado activo
+    if (req.query.active !== undefined) {
+      console.log('Adding active filter:', req.query.active);
+      const isActive = String(req.query.active).toLowerCase() === 'true';
+      query += ` AND u.activo = $${paramIndex++}`;
+      values.push(isActive);
+    }
+    
+    // Orden y límite
+    query += ` ORDER BY u.fecha_creacion DESC`;
+    
+    if (req.query.limit) {
+      const limit = parseInt(String(req.query.limit)) || 100;
+      query += ` LIMIT $${paramIndex++}`;
+      values.push(limit);
+    }
+    
+    console.log('Final query:', query);
+    console.log('Query values:', values);
+    
+    const result = await queryWithRetry(query, values);
+    console.log('Query executed successfully, rows returned:', result.rows.length);
+
+    const users: User[] = result.rows.map((row: any) => ({
+      id: row.id,
+      email: row.email,
+      nombre: row.nombre,
+      apellido: row.apellido,
+      rol: row.rol,
+      numeroEmpleado: row.numero_empleado,
+      telefono: row.telefono,
+      fechaContratacion: row.fecha_contratacion,
+      departamento: undefined, // Campo no disponible en BD
+      supervisor_id: undefined,
+      supervisor_nombre: undefined,
+      dias_disponibles: row.dias_disponibles,
+      diasTomados: row.dias_tomados,
+      activo: row.activo,
+      fecha_creacion: row.fecha_creacion,
+      fechaActualizacion: row.fecha_actualizacion,
+      ultimo_acceso: undefined
+    }));
+
+    console.log('Users mapped successfully:', users.length);
+
+    res.status(200).json({
+      success: true,
+      data: users,
+      message: 'Usuarios obtenidos exitosamente'
+    });
+    
+    console.log('=== getAllUsers SUCCESS ===');
+    
+  } catch (error) {
+    console.error('=== getAllUsers ERROR ===');
+    console.error('Error obteniendo usuarios:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack available');
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al obtener usuarios'
+    });
+  }
+};
+
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT 
+        u.id,
+        u.email,
+        u.nombre,
+        u.apellido,
+        u.numero_empleado,
+        u.rol,
+        u.jefe_superior_id,
+        u.dias_disponibles,
+        u.activo,
+        u.fecha_creacion
+      FROM usuarios u
+      WHERE u.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+      return;
+    }
+
+    const user: User = {
+      id: result.rows[0].id,
+      email: result.rows[0].email,
+      nombre: result.rows[0].nombre,
+      apellido: result.rows[0].apellido,
+      numeroEmpleado: result.rows[0].numero_empleado,
+      rol: result.rows[0].rol,
+      departamento: undefined, // Campo no disponible en BD
+      supervisor_id: result.rows[0].jefe_superior_id,
+      supervisor_nombre: undefined, // Campo no disponible en BD
+      dias_disponibles: result.rows[0].dias_disponibles,
+      activo: result.rows[0].activo,
+      fecha_creacion: result.rows[0].fecha_creacion,
+      ultimo_acceso: undefined // Campo no disponible en BD
+    };
+
+    res.status(200).json({
+      success: true,
+      data: user,
+      message: 'Usuario obtenido exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al obtener usuario'
+    });
+  }
+};
+
+export const createUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('=== CREATE USER DEBUG ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    const { email, password, nombre, apellido, rol, numero_empleado, fecha_contratacion, departamento, supervisor_id, dias_disponibles }: CreateUserRequest = req.body;
+    
+    console.log('Extracted values:', { email, password: '***', nombre, apellido, rol, numero_empleado, departamento, supervisor_id, dias_disponibles });
+    
+    // Validaciones
+    if (!email || !password || !nombre || !apellido || !rol) {
+      console.log('Validation failed - missing required fields');
+      res.status(400).json({
+        success: false,
+        message: 'Faltan campos requeridos: email, password, nombre, apellido, rol'
+      });
+      return;
+    }
+    
+    // Verificar si el email ya existe
+    const existingUser = await queryWithRetry('SELECT id FROM usuarios WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      res.status(409).json({
+        success: false,
+        message: 'Ya existe un usuario con este email'
+      });
+      return;
+    }
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash(password, 12);
+    console.log('Password hashed successfully');
+
+    const query = `
+      INSERT INTO usuarios (email, password_hash, nombre, apellido, rol, numero_empleado, telefono, fecha_contratacion, jefe_superior_id, dias_disponibles, activo, fecha_actualizacion)
+      VALUES ($1, $2, $3, $4, $5, $6, '', CURRENT_DATE, $7, $8, true, CURRENT_TIMESTAMP)
+      RETURNING id, email, nombre, apellido, rol, numero_empleado, telefono, fecha_contratacion, jefe_superior_id, dias_disponibles, activo, fecha_creacion
+    `;
+    
+    const values = [email, hashedPassword, nombre, apellido, rol, numero_empleado, supervisor_id, dias_disponibles || 20];
+    
+    console.log('SQL Query:', query);
+    console.log('SQL Values:', values.map((v, i) => i === 1 ? '***' : v)); // Hide password
+    
+    const result = await queryWithRetry(query, values);
+
+    const newUser = result.rows[0];
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: newUser.id,
+        email: newUser.email,
+        nombre: newUser.nombre,
+        apellido: newUser.apellido,
+        rol: newUser.rol,
+        numeroEmpleado: newUser.numero_empleado,
+        departamento: undefined, // No disponible en esta tabla
+        supervisor_id: newUser.jefe_superior_id,
+        dias_disponibles: newUser.dias_disponibles,
+        activo: newUser.activo,
+        fecha_creacion: newUser.fecha_creacion
+      },
+      message: 'Usuario creado exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('=== CREATE USER ERROR ===');
+    console.error('Error details:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    console.error('========================');
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al crear usuario'
+    });
+  }
+};
+
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('=== UPDATE USER DEBUG ===');
+    const { id } = req.params;
+    const updates: UpdateUserRequest = req.body;
+    
+    console.log('User ID:', id);
+    console.log('Update data:', JSON.stringify(updates, null, 2));
+    
+    // Verificar que el usuario existe
+    const existingUser = await queryWithRetry('SELECT id FROM usuarios WHERE id = $1', [id]);
+    if (existingUser.rows.length === 0) {
+      console.log('User not found:', id);
+      res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+      return;
+    }
+
+    // Construir la consulta de actualización dinámicamente
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        // Mapear nombres de campo del frontend a la base de datos
+        let dbFieldName = key;
+        if (key === 'supervisor_id') {
+          dbFieldName = 'jefe_superior_id';
+        } else if (key === 'numero_empleado') {
+          dbFieldName = 'numero_empleado'; // Ya está correcto
+        }
+        
+        updateFields.push(`${dbFieldName} = $${paramIndex}`);
+        values.push(value);
+        paramIndex++;
+      }
+    });
+
+    // Agregar fecha_actualizacion automáticamente
+    updateFields.push(`fecha_actualizacion = $${paramIndex}`);
+    values.push(new Date().toISOString());
+    paramIndex++;
+
+    if (updateFields.length === 1) { // Solo fecha_actualizacion
+      console.log('No fields to update provided');
+      res.status(400).json({
+        success: false,
+        message: 'No se proporcionaron campos para actualizar'
+      });
+      return;
+    }
+
+    values.push(id);
+    
+    const updateQuery = `
+      UPDATE usuarios 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING id, email, nombre, apellido, numero_empleado, rol, jefe_superior_id, dias_disponibles, activo, fecha_creacion
+    `;
+
+    console.log('Update query:', updateQuery);
+    console.log('Update values:', values.map((v, i) => i === values.length - 1 ? v : '***')); // Hide sensitive data
+
+    const result = await queryWithRetry(updateQuery, values);
+    const updatedUser = result.rows[0];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        nombre: updatedUser.nombre,
+        apellido: updatedUser.apellido,
+        numeroEmpleado: updatedUser.numero_empleado,
+        rol: updatedUser.rol,
+        departamento: undefined, // Campo no disponible en BD
+        supervisor_id: updatedUser.jefe_superior_id,
+        dias_disponibles: updatedUser.dias_disponibles,
+        activo: updatedUser.activo,
+        fecha_creacion: updatedUser.fecha_creacion
+      },
+      message: 'Usuario actualizado exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('=== UPDATE USER ERROR ===');
+    console.error('Error details:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    console.error('========================');
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al actualizar usuario'
+    });
+  }
+};
+
+export const deleteUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar que el usuario existe
+    const existingUser = await pool.query('SELECT id FROM usuarios WHERE id = $1', [id]);
+    if (existingUser.rows.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+      return;
+    }
+
+    // En lugar de eliminar, marcar como inactivo
+    await pool.query('UPDATE usuarios SET activo = false WHERE id = $1', [id]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Usuario desactivado exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('Error eliminando usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al eliminar usuario'
+    });
+  }
+};
+
+// Nueva función para cambiar el estado del usuario
+export const toggleUserStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { activo } = req.body;
+    
+    // Verificar que el usuario existe
+    const existingUser = await pool.query('SELECT id, activo FROM usuarios WHERE id = $1', [id]);
+    if (existingUser.rows.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+      return;
+    }
+
+    // Actualizar el estado
+    const result = await pool.query(
+      'UPDATE usuarios SET activo = $1 WHERE id = $2 RETURNING id, email, nombre, apellido, rol, dias_disponibles, activo, fecha_creacion',
+      [activo, id]
+    );
+
+    const updatedUser = result.rows[0];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        nombre: updatedUser.nombre,
+        apellido: updatedUser.apellido,
+        rol: updatedUser.rol,
+        departamento: undefined,
+        supervisor_id: undefined,
+        supervisor_nombre: undefined,
+        dias_disponibles: updatedUser.dias_disponibles,
+        activo: updatedUser.activo,
+        fecha_creacion: updatedUser.fecha_creacion,
+        ultimo_acceso: undefined
+      },
+      message: `Usuario ${activo ? 'activado' : 'desactivado'} exitosamente`
+    });
+    
+  } catch (error) {
+    console.error('Error cambiando estado del usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al cambiar estado del usuario'
+    });
+  }
+};
+
+export const getUserStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const statsResult = await pool.query(`
+      SELECT 
+        COUNT(*) as total_empleados,
+        COUNT(*) FILTER (WHERE activo = true) as empleados_activos,
+        COUNT(*) FILTER (WHERE rol = 'empleado') as empleados,
+        COUNT(*) FILTER (WHERE rol = 'jefe_superior') as jefes_superiores,
+        COUNT(*) FILTER (WHERE rol = 'rrhh') as rrhh,
+        COUNT(DISTINCT departamento) FILTER (WHERE departamento IS NOT NULL) as departamentos
+      FROM usuarios
+    `);
+
+    const stats = statsResult.rows[0];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total_empleados: parseInt(stats.total_empleados),
+        empleados_activos: parseInt(stats.empleados_activos),
+        empleados: parseInt(stats.empleados),
+        jefes_superiores: parseInt(stats.jefes_superiores),
+        rrhh: parseInt(stats.rrhh),
+        departamentos: parseInt(stats.departamentos)
+      },
+      message: 'Estadísticas obtenidas exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor al obtener estadísticas'
+    });
+  }
+};

@@ -1,0 +1,201 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Dashboard" showNavbar={true}>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Hero Section -->
+    <div class="bg-gradient-to-r from-blue-900 to-blue-700 text-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="text-center">
+          <h1 class="text-4xl font-bold mb-4">
+            Sistema de Gestión de Vacaciones
+          </h1>
+          <p class="text-xl text-blue-100 mb-8">
+            CNI Honduras - Bienvenido al portal de gestión de vacaciones
+          </p>
+          <div class="flex justify-center space-x-4">
+            <a href="/vacaciones" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+              Solicitar Vacaciones
+            </a>
+            <a href="/dashboard" class="bg-white text-blue-900 hover:bg-gray-100 px-6 py-3 rounded-lg font-medium transition-colors">
+              Ver Dashboard
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Días Disponibles</p>
+              <p class="text-2xl font-bold text-gray-900">15</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Días Usados</p>
+              <p class="text-2xl font-bold text-gray-900">5</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Solicitudes Pendientes</p>
+              <p class="text-2xl font-bold text-gray-900">2</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Equipo</p>
+              <p class="text-2xl font-bold text-gray-900">12</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">Acciones Rápidas</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
+          <div class="p-6">
+            <div class="flex items-center mb-4">
+              <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <h3 class="ml-3 text-lg font-medium text-gray-900">Nueva Solicitud</h3>
+            </div>
+            <p class="text-gray-600 mb-4">Solicita nuevos días de vacaciones</p>
+            <a href="/vacaciones/nueva" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-block text-center">
+              Solicitar Ahora
+            </a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
+          <div class="p-6">
+            <div class="flex items-center mb-4">
+              <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              <h3 class="ml-3 text-lg font-medium text-gray-900">Mis Solicitudes</h3>
+            </div>
+            <p class="text-gray-600 mb-4">Revisa el estado de tus solicitudes</p>
+            <a href="/vacaciones" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-block text-center">
+              Ver Solicitudes
+            </a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow">
+          <div class="p-6">
+            <div class="flex items-center mb-4">
+              <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              <h3 class="ml-3 text-lg font-medium text-gray-900">Calendario</h3>
+            </div>
+            <p class="text-gray-600 mb-4">Ve el calendario del equipo</p>
+            <a href="/calendario" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors inline-block text-center">
+              Ver Calendario
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h2 class="text-3xl font-bold text-gray-900 mb-8">Actividad Reciente</h2>
+      <div class="bg-white shadow-lg rounded-lg border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Últimas Actualizaciones</h3>
+        </div>
+        <div class="divide-y divide-gray-200">
+          
+          <div class="px-6 py-4 flex items-center">
+            <div class="flex-shrink-0">
+              <div class="h-2 w-2 bg-green-400 rounded-full"></div>
+            </div>
+            <div class="ml-4 flex-1">
+              <p class="text-sm text-gray-900">
+                Tu solicitud de vacaciones del 15-20 de Enero fue 
+                <span class="font-medium text-green-600">aprobada</span>
+              </p>
+              <p class="text-xs text-gray-500">Hace 2 horas</p>
+            </div>
+          </div>
+
+          <div class="px-6 py-4 flex items-center">
+            <div class="flex-shrink-0">
+              <div class="h-2 w-2 bg-yellow-400 rounded-full"></div>
+            </div>
+            <div class="ml-4 flex-1">
+              <p class="text-sm text-gray-900">
+                Nueva solicitud de <span class="font-medium">Juan Pérez</span> está 
+                <span class="font-medium text-yellow-600">pendiente de revisión</span>
+              </p>
+              <p class="text-xs text-gray-500">Hace 4 horas</p>
+            </div>
+          </div>
+
+          <div class="px-6 py-4 flex items-center">
+            <div class="flex-shrink-0">
+              <div class="h-2 w-2 bg-blue-400 rounded-full"></div>
+            </div>
+            <div class="ml-4 flex-1">
+              <p class="text-sm text-gray-900">
+                Se actualizó el balance de días de vacaciones para el año 2024
+              </p>
+              <p class="text-xs text-gray-500">Ayer</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</Layout>
+
+<style>
+  .gradient-bg {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+</style>
