@@ -2,7 +2,7 @@ import axios, { type AxiosInstance, type AxiosResponse, type AxiosError } from '
 import type { ApiResponse } from '../../types';
 
 // Configuración base de la API
-const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:3000/api';
 
 class ApiService {
   private client: AxiosInstance;
