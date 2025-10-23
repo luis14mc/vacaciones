@@ -47,13 +47,10 @@ const VacationRequestsCRUD: React.FC = () => {
       const response = await vacationService.getAllSolicitudes();
       if (response.success && response.data) {
         setSolicitudes(response.data);
-      } else {
-        console.error('Error al cargar solicitudes:', response.message);
-        await SweetAlert.error('Error al cargar', response.message || 'No se pudieron cargar las solicitudes');
       }
     } catch (error: any) {
       console.error('Error loading vacation requests:', error);
-      await SweetAlert.error('Error al cargar', error.message || 'No se pudieron cargar las solicitudes de vacaciones');
+      await SweetAlert.error('Error al cargar', 'No se pudieron cargar las solicitudes de vacaciones');
     } finally {
       setLoading(false);
     }
@@ -247,13 +244,17 @@ const VacationRequestsCRUD: React.FC = () => {
       let response;
       
       if (approvalType === 'jefe') {
-        response = approvalAction === 'approve' 
-          ? await vacationService.approveByJefe(editingSolicitud.id, approvalComment)
-          : await vacationService.rejectByJefe(editingSolicitud.id, approvalComment);
+        if (approvalAction === 'approve') {
+          response = await vacationService.approveByJefe(editingSolicitud.id, approvalComment);
+        } else {
+          response = await vacationService.rejectByJefe(editingSolicitud.id, approvalComment);
+        }
       } else {
-        response = approvalAction === 'approve'
-          ? await vacationService.approveByRRHH(editingSolicitud.id, approvalComment)
-          : await vacationService.rejectByRRHH(editingSolicitud.id, approvalComment);
+        if (approvalAction === 'approve') {
+          response = await vacationService.approveByRRHH(editingSolicitud.id, approvalComment);
+        } else {
+          response = await vacationService.rejectByRRHH(editingSolicitud.id, approvalComment);
+        }
       }
 
       if (response.success) {
@@ -341,6 +342,30 @@ const VacationRequestsCRUD: React.FC = () => {
         </span>
       </div>
     );
+  };
+
+  // Función para obtener el color del badge según el estado
+  const getStatusBadge = (estado: string) => {
+    const badges = {
+      'pendiente_jefe': 'bg-yellow-100 text-yellow-800',
+      'pendiente_rrhh': 'bg-blue-100 text-blue-800',
+      'aprobada': 'bg-green-100 text-green-800',
+      'rechazada': 'bg-red-100 text-red-800',
+      'cancelada': 'bg-gray-100 text-gray-800'
+    };
+    return badges[estado as keyof typeof badges] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Función para obtener el texto del estado
+  const getStatusText = (estado: string) => {
+    const texts = {
+      'pendiente_jefe': 'Pendiente Jefe',
+      'pendiente_rrhh': 'Pendiente RRHH',
+      'aprobada': 'Aprobada',
+      'rechazada': 'Rechazada',
+      'cancelada': 'Cancelada'
+    };
+    return texts[estado as keyof typeof texts] || estado;
   };
 
   const statusOptions = [
